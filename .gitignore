@@ -1,0 +1,64 @@
+# ==========================================
+# 1. GENERAL / OS / IDE
+# ==========================================
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE settings (VS Code, Visual Studio, Rider)
+.vscode/
+.idea/
+.vs/
+*.suo
+*.user
+*.sln.docstates
+
+# ==========================================
+# 2. REACT FRONTEND (gameFront)
+# ==========================================
+# Dependencies
+node_modules/
+
+# Build output
+build/
+dist/
+
+# Environment variables (NEVER commit secrets)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing coverage
+coverage/
+
+# ==========================================
+# 3. .NET BACKEND (gameBack)
+# ==========================================
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio / Rider cache and build files
+*.dll
+*.exe
+*.pdb
+*.cache
+*.sln
+
+# NuGet packages (if using legacy packages folder)
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
