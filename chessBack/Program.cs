@@ -1,3 +1,5 @@
+using chessBack.Context;
+using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -5,6 +7,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();
 builder.Services.AddOpenApi();
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+});
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("react", policy =>
@@ -14,7 +20,7 @@ builder.Services.AddCors(options =>
         .AllowAnyOrigin();
 
     });
-})
+});
 
 var app = builder.Build();
 if (app.Environment.IsDevelopment())
