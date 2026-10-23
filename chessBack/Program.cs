@@ -1,5 +1,6 @@
 using System.Text;
 using chessBack.Context;
+using chessBack.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -34,6 +35,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+builder.Services.AddScoped<JwtService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("react", policy =>
@@ -52,6 +54,7 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 app.UseCors("react");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
