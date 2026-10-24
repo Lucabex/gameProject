@@ -1,5 +1,6 @@
 using System.Text;
 using chessBack.Context;
+using chessBack.Hubs;
 using chessBack.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();
+builder.Services.AddSignalR();
 builder.Services.AddOpenApi();
 var jwt = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwt["SecretKey"];
@@ -59,6 +61,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ChessHub>("/chesshub");
 
 app.Run();
 
