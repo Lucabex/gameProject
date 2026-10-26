@@ -1,0 +1,58 @@
+using chessBack.Context;
+using chessBack.Models;
+using chessBack.Services;
+using Microsoft.AspNetCore.Mvc;
+using chessBack.DTO;
+using Microsoft.EntityFrameworkCore;
+
+namespace chessBack.Controllers;
+[ApiController]
+[Route("auth")]
+public class AuthController : ControllerBase
+{
+    private readonly AppDbContext _context;
+    private readonly IHttpClientFactory _factroy;
+    private readonly JwtService _jwt;
+
+    public AuthController(IHttpClientFactory factory,AppDbContext context,JwtService jwt)
+    {
+        _context = context;
+        _factroy = factory;
+        _jwt = jwt;
+
+    }
+    [HttpPost("log")]
+    public async Task<IActionResult> Log(InputDto dto)
+    {
+        //check if the user correctly input username and password
+        if(string.IsNullOrEmpty(dto.UserName)|| string.IsNullOrEmpty(dto.Password))
+        {
+            return BadRequest("Missing username or password");
+        }
+        //store the user data inside user
+        var user = await _context.User.FirstOrDefaultAsync(u=>u.UserName.ToLower() == dto.UserName.ToLower());
+        //check if user exists and if the password match the one stored in the db
+        if(user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.HashedPassord))
+        {
+            return BadRequest("Invalid userName or Passowrd");
+        }
+        //if user exist and password is correct genenrate token
+        var token = _jwt.GenerateToken(user);
+
+        var name = user.UserName;
+        var id = user.Id;
+        var attempt = user.Attempt;
+        var solved = user.Solved;
+        return Ok(new
+        {
+            message=$"{user.UserName} correctly logge in",
+            Token= token,
+            Id = id,
+            UserName = name,
+            Attempt = attempt,
+            Solved = solved,
+            });
+
+    }
+    
+}
