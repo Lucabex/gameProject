@@ -54,5 +54,31 @@ public class AuthController : ControllerBase
             });
 
     }
-    
+    [HttpPost("reg")]
+    public async Task<IActionResult> Reg(InputDto dto)
+    {
+         //check if the user correctly input username and password
+        if(string.IsNullOrEmpty(dto.UserName)|| string.IsNullOrEmpty(dto.Password))
+        {
+            return BadRequest("Missing username or password");
+        }
+        if(await _context.User.AnyAsync(u=>u.UserName.ToLower()== dto.UserName.ToLower()))
+        {
+            return BadRequest("UserName already in use");
+
+        }
+        var user = new User
+        {
+            UserName = dto.UserName,
+            HashedPassord = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+        };
+        _context.User.Add(user);
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            Message = $"{user.UserName} correctly registered",
+            
+        });
+    }
 }
