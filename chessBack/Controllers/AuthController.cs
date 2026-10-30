@@ -4,6 +4,9 @@ using chessBack.Services;
 using Microsoft.AspNetCore.Mvc;
 using chessBack.DTO;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using chessBack.Records;
 
 namespace chessBack.Controllers;
 [ApiController]
@@ -81,4 +84,46 @@ public class AuthController : ControllerBase
             
         });
     }
+    [HttpGet("puz")]
+    [Authorize]
+    public async Task<IActionResult> Puzz1(){
+
+        var userClaimId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if(string.IsNullOrEmpty(userClaimId) || !int.TryParse(userClaimId,out int userId))
+        {
+            return Unauthorized("Please log-in");
+        }
+        var url= "https://lichess.org/api/puzzle/daily";
+        var client = _factroy.CreateClient();
+        var response = await client.GetFromJsonAsync<Puzzle1>(url);
+        if(response?.Puzzle.Fen == null || response?.Puzzle.Solution == null || response?.Puzzle.Themes == null)
+        {
+            return StatusCode(503,"Service not available try agin later");
+        }
+
+        return Ok(response);
+
+    }
+     [HttpGet("puz2")]
+     [Authorize]
+    public async Task<IActionResult> GetPuzzle2()
+    {
+        var userClaimId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if(userClaimId == null || !int.TryParse(userClaimId,out int userId))
+        {
+            return Unauthorized("Please log-in");
+        }
+        var client = _factroy.CreateClient();
+        var url = "https://chess-puzzles-api.vercel.app/puzzles?themes=mateIn4&min_rating=800&max_rating=2000&limit=20";       
+        var response = await client.GetFromJsonAsync<List<Puzzle2>>(url);
+
+    if (response == null || response.Count == 0 || response.Count <20)
+    {
+        return StatusCode(503, "No puzzles available from API");
+    }
+    int randomNumber = Random.Shared.Next(0,21);
+
+    return Ok(response[randomNumber]);
+    }
+    
 }
