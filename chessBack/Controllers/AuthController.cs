@@ -125,5 +125,80 @@ public class AuthController : ControllerBase
 
     return Ok(response[randomNumber]);
     }
+     [HttpPost("solve")]
+     [Authorize]
+    public async Task<IActionResult> AddSolve()
+    {
+           var userClaimId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if(userClaimId == null || !int.TryParse(userClaimId,out int userId))
+        {
+            return Unauthorized("Please log-in");
+        }
+       
+
+        var userFile = await _context.User.FirstOrDefaultAsync(u=>u.Id  == userId);
+        
+        if(userFile == null)
+        {
+            return NotFound("User not found!");
+        }
+        userFile.Solved+=1;
+        
+        await _context.SaveChangesAsync();
+     
+        return Ok(new
+        {
+            Message="Puzzle added",
+            NewCount = userFile.Solved,
+
+        });
+    }
+    [HttpPost("AddPuzzle")]
+    [Authorize]
+    public async Task<IActionResult> AddPuzzle()
+    {
+        var userClaimid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+          if (string.IsNullOrEmpty(userClaimid) || !int.TryParse(userClaimid, out int userId))
+    {
+        return Unauthorized("Invalid token or user ID format");
+    }
+        var user = await _context.User.FirstOrDefaultAsync(u=>u.Id==userId);
+        if(user == null)
+        {
+            return NotFound("user not found");
+        }
+        user.Attempt+=1;
+        await _context.SaveChangesAsync();
+        return Ok(new
+        {
+            message="attempt added",
+            count = user.Attempt
+        });
     
+    }
+
+    [HttpGet("count")]
+    [Authorize]
+        public async Task<IActionResult> GetCount()
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier); 
+     if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+    {
+        return Unauthorized("Invalid token or user ID format");
+    }
+    
+    var user = await _context.User.FirstOrDefaultAsync(u =>u.Id == userId);
+    
+    if (user == null)
+    {
+        return NotFound("User not found");
+    }
+        var userCount = user.Solved;
+       
+        return Ok(new
+        {
+            message="count returned",
+            Count=user.Solved
+        });
+    }
 }
