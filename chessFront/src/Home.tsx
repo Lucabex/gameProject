@@ -69,7 +69,7 @@ function Home() {
           <div className="buttonBox">
             <button onClick={handleRoute}>Log-in</button>
             <button onClick={handleRegister}>Register</button>
-            <Link to="/test">Play Chess</Link>
+
             <p></p>
           </div>
           <p>{error}</p>
