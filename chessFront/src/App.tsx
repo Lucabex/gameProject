@@ -6,10 +6,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* 1. The Login Screen is now ONLY shown when the URL is "/" */}
         <Route path="/" element={<Home />} />
-
-        {/* 2. Test2 is ONLY shown when the URL is "/play" */}
 
         <Route path="/dash" element={<Dash />} />
       </Routes>
