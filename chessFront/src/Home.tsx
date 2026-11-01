@@ -37,9 +37,11 @@ function Home() {
           console.error("Worng username or password");
           errorMessage = "Wrong username or password";
         } else if (response.status == 401) {
+          console.error("Missing User name or passord");
           errorMessage = "Missing User name or passord";
         } else if (response == null) {
-          errorMessage = `Server Error:Not connected`;
+          console.error("Server Error:Not connected");
+          errorMessage = "Server Error:Not connected";
         } else {
           errorMessage = `Server Error:${response.status} ${response.statusText}`;
         }

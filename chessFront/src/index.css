@@ -39,8 +39,14 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: 1rem;
 }
 .boardBox {
   width: 550px;
   height: 550px;
+}
+.gameInfoBox {
+  width: 280px;
+  height: 280px;
+  background-color: rgba(216, 180, 72, 0.813);
 }
