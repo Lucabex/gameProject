@@ -121,7 +121,7 @@ public class AuthController : ControllerBase
     {
         return StatusCode(503, "No puzzles available from API");
     }
-    int randomNumber = Random.Shared.Next(0,21);
+    int randomNumber = Random.Shared.Next(0,response.Count);
 
     return Ok(response[randomNumber]);
     }
@@ -172,6 +172,30 @@ public class AuthController : ControllerBase
         return Ok(new
         {
             message="attempt added",
+            count = user.Attempt
+        });
+    
+    }
+     [HttpGet("countAttempt")]
+    [Authorize]
+    public async Task<IActionResult> CountAttempt()
+    {
+        var userClaimid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+          if (string.IsNullOrEmpty(userClaimid) || !int.TryParse(userClaimid, out int userId))
+    {
+        return Unauthorized("Invalid token or user ID format");
+    }
+        var user = await _context.User.FirstOrDefaultAsync(u=>u.Id==userId);
+        if(user == null)
+        {
+            return NotFound("user not found");
+        }
+        var attempt = user.Attempt;
+    
+   
+        return Ok(new
+        {
+            message="Count returned",
             count = user.Attempt
         });
     
