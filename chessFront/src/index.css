@@ -68,4 +68,17 @@
   width: 300px;
   height: 450px;
   background-color: blue;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
+.searchingInfoBox h3 {
+  color: white;
+}
+#onLineButtton {
+  margin-top: 0.5rem;
+  padding: 5px;
+  width: 140px;
 }
