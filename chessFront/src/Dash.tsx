@@ -2,6 +2,24 @@ import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 
 import React, { useEffect, useState } from "react";
+import * as signalR from "@microsoft/signalR";
+const connection = new signalR.HubConnectionBuilder()
+  .withUrl("http://localhost:5228/chesshub", {
+    withCredentials: false,
+  })
+  .withAutomaticReconnect()
+  .build();
+
+const startConnectio = async () => {
+  if (connection.state == signalR.HubConnectionState.Connected) return;
+  console.log("this is state of connection", connection.state);
+  try {
+    await connection.start();
+    console.log("signalR connected");
+  } catch (err) {
+    console.error("signalR Connection Error:", err);
+  }
+};
 const Api_url = "http://localhost:5228/auth";
 
 interface PuzzleType {
@@ -20,11 +38,149 @@ function Dash() {
     "Loading" | "Playing" | "Solved" | "Failed"
   >("Loading");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [info, setInfo] = useState(false);
+  const [info, setInfo] = useState<boolean>(false);
   const [fetchedCount, setFetchedCount] = useState(0);
   const [fetchedSolved, setFetchedSolved] = useState(0);
-  const [isSearching, setIsSearching] = useState(true);
-  const [isOnLine, setIsOnLine] = useState(false);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [isSearchingMatch, setIsSearchingMatch] = useState<boolean>(false);
+  const [isOnLine, setIsOnLine] = useState<boolean>(false);
+  const [onLineRoomId, setOnLineRoomId] = useState<string | null>(null);
+  const [opponentName, setOpponentName] = useState<string>("");
+  const [onlineColor, setOnlineColor] = useState<"white" | "black">("white");
+  const [onLineGame, setOnLineGame] = useState(new Chess());
+  const [currentUserName, setCurrentUserName] = useState<string>("Player");
+  const [logged, setLogged] = useState<boolean>(false);
+  useEffect(() => {
+    const handleWaiting = () => {
+      setIsSearchingMatch(true);
+    };
+
+    const handleMatchFound = (
+      roomId: string,
+      oppName: string,
+      color: string,
+    ) => {
+      console.log("MatchFound received!", {
+        roomId,
+        oppName,
+        color,
+      });
+      setIsSearchingMatch(false);
+      setIsOnLine(true);
+      setOpponentName(oppName);
+      setOnLineRoomId(roomId);
+      setOnlineColor(color === "black" ? "black" : "white");
+      setOnLineGame(new Chess());
+    };
+
+    const handleOpponentMove = (moveData: any) => {
+      setOnLineGame((prevGame) => {
+        const gameCopy = new Chess(prevGame.fen());
+        const move = gameCopy.move({
+          from: moveData.from,
+          to: moveData.to,
+          promotion: "q",
+        });
+        if (!move) return prevGame;
+        return gameCopy;
+      });
+    };
+
+    const handleCancelSearchSignalR = () => {
+      setIsSearchingMatch(false);
+    };
+
+    connection.on("WaitingForMatch", handleWaiting);
+    connection.on("MatchFound", handleMatchFound);
+    connection.on("CancelSearch", handleCancelSearchSignalR);
+    connection.on("OpponentMove", handleOpponentMove);
+
+    startConnectio();
+
+    return () => {
+      connection.off("WaitingForMatch", handleWaiting);
+      connection.off("MatchFound", handleMatchFound);
+      connection.off("CancelSearch", handleCancelSearchSignalR);
+      connection.off("OpponentMove", handleOpponentMove);
+    };
+  }, []);
+  const handleSearchOnLine = async () => {
+    setIsSearchingMatch(true);
+    setOpponentName("");
+
+    if (connection.state !== signalR.HubConnectionState.Connected) {
+      await startConnectio();
+    }
+
+    if (connection.state !== signalR.HubConnectionState.Connected) {
+      setIsSearchingMatch(false);
+      alert("Could not connect to the matchmaking server.");
+      return;
+    }
+
+    const userName = localStorage.getItem("userName") || "Player";
+
+    try {
+      await connection.invoke("FindNewMatch", userName);
+    } catch (err) {
+      setIsSearchingMatch(false);
+      alert(
+        "Matchmaking error: " +
+          (err instanceof Error ? err.message : "Unknown error"),
+      );
+    }
+  };
+  const handleStopSearch = async () => {
+    setIsSearchingMatch(false);
+
+    if (connection.state === signalR.HubConnectionState.Connected) {
+      try {
+        await connection.invoke("CancelSearch");
+        console.log("Successfully canceled search on server.");
+      } catch (err) {
+        console.error("Error canceling search on server:", err);
+      }
+    } else {
+      console.log(
+        "Connection not established yet, no need to cancel on server.",
+      );
+    }
+  };
+  const onOnlineDrop = (start: string, target: string): boolean => {
+    const gameCopy = new Chess(onLineGame.fen());
+    const turn = gameCopy.turn();
+    const isMyTurn =
+      (turn === "w" && onlineColor === "white") ||
+      (turn === "b" && onlineColor === "black");
+
+    if (!isMyTurn) {
+      console.log("Not your turn!");
+      return false;
+    }
+    let move;
+    try {
+      move = gameCopy.move({ from: start, to: target, promotion: "q" });
+    } catch (e) {
+      console.log("Invalid move attempted:", e);
+      return false;
+    }
+
+    if (!move) {
+      return false;
+    }
+    setOnLineGame(gameCopy);
+
+    if (onLineRoomId) {
+      connection
+        .invoke("MakeOnlineMove", onLineRoomId, {
+          from: start,
+          to: target,
+          fen: gameCopy.fen(),
+        })
+        .catch((err) => console.error("SignalR invoke error:", err));
+    }
+    return true;
+  };
 
   const handleSolved = async () => {
     const token = localStorage.getItem("token");
@@ -81,6 +237,8 @@ function Dash() {
   useEffect(() => {
     const fetchUserInfo = async () => {
       const token = localStorage.getItem("token");
+      const name = localStorage.getItem("userName") || "Player";
+      setCurrentUserName(name);
       try {
         const response = await fetch(`${Api_url}/countAttempt`, {
           method: "GET",
@@ -101,7 +259,7 @@ function Dash() {
         const count = data.count;
 
         setFetchedCount(count);
-        console.log("starting response2");
+
         const response2 = await fetch(`${Api_url}/count`, {
           method: "GET",
           headers: {
@@ -116,10 +274,10 @@ function Dash() {
 
           return;
         }
-        console.log("response2 is ok");
+
         const data2 = await response2.json();
         const solved = data2.count;
-        console.log("this is solved", solved);
+
         setFetchedSolved(solved);
       } catch (error) {
         console.error("Error fetchinf user info", error);
@@ -127,6 +285,7 @@ function Dash() {
     };
 
     fetchUserInfo();
+    setLogged((prev) => !prev);
   }, []);
 
   const fetchTwo = async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -353,9 +512,15 @@ function Dash() {
     }
     return true;
   };
+  console.log(
+    "🔄 RENDER CHECK: isSearchingMatch =",
+    isSearchingMatch,
+    "isOnLine =",
+    isOnLine,
+  );
   return (
     <>
-      {!isSearching && !isOnLine && (
+      {!isSearchingMatch && !isOnLine && (
         <div className="dashBox">
           <div className="boardBox">
             <Chessboard
@@ -372,17 +537,91 @@ function Dash() {
               <button onClick={fetchOne}>Puzzle</button>
               <button onClick={fetchTwo}>Puzzle2</button>
             </div>
+            <button id="onLineButton" onClick={handleSearchOnLine}>
+              Play Online
+            </button>
           </div>
         </div>
       )}
-      {isSearching && (
-        <>
-          <div className="searchingBox">
-            <div className="searchingInfoBox"></div>
+
+      {isSearchingMatch && !isOnLine && (
+        <div className="searchingBox">
+          <div className="searchingInfoBox">
+            <h3>Searching for an opponent...</h3>
+            <button
+              onClick={handleStopSearch}
+              style={{ marginTop: "10px", padding: "8px 16px" }}
+            >
+              Stop Search
+            </button>
           </div>
-        </>
+        </div>
       )}
-      {!isSearching && isOnLine && <>hola2</>}
+
+      {/* 3. ONLINE MATCH VIEW (CLEAN & PROFESSIONAL) */}
+      {!isSearchingMatch && isOnLine && (
+        <div className="dashBox">
+          <div className="boardBox">
+            <h2
+              style={{
+                textAlign: "center",
+                marginBottom: "15px",
+                color: "#333",
+              }}
+            >
+              Playing as{" "}
+              <strong
+                style={{
+                  color: onlineColor === "white" ? "#fff" : "#000",
+                  textShadow:
+                    onlineColor === "white" ? "1px 1px 2px #000" : "none",
+                }}
+              >
+                {onlineColor.toUpperCase()}
+              </strong>{" "}
+              vs <strong>{opponentName || "Opponent"}</strong>
+            </h2>
+            <Chessboard
+              position={onLineGame.fen()}
+              boardOrientation={onlineColor}
+              onPieceDrop={onOnlineDrop}
+            />
+          </div>
+          <div className="gameInfoBox" style={{ textAlign: "center" }}>
+            <p>
+              <strong>You:</strong> {currentUserName}
+            </p>
+            <p>
+              <strong>Opponent:</strong> {opponentName}
+            </p>
+            <p>
+              <strong>Room ID:</strong> {onLineRoomId?.substring(0, 8)}...
+            </p>
+
+            <button
+              onClick={() => {
+                setIsOnLine(false);
+                setOnLineGame(new Chess());
+                setOpponentName("");
+                setOnLineRoomId(null);
+              }}
+              style={{
+                marginTop: "15px",
+                padding: "10px 20px",
+                backgroundColor: "#ff4444",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: "bold",
+                fontSize: "14px",
+              }}
+            >
+              Leave Match
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
